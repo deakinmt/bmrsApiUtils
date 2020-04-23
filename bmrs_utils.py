@@ -236,12 +236,10 @@ class bm_api_utils():
     """A class for calling BMRS using requests, then processing the XML data.
     
     """
-    # from elexon portal, 'my profile', 'scripting key'
-    key = 'z1vb192eqy0x4ox'
-    
-    def __init__(self,datatype):
+    def __init__(self,datatype,api_key):
         host = 'https://api.bmreports.com'
         port = ':443'
+        self.key = api_key
         apikey = 'APIKey='+self.key
         
         self.ad = api_d(datatype)

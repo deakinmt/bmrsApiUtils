@@ -2,6 +2,9 @@ import os, sys, pickle
 import matplotlib.pyplot as plt
 import bmrs_utils
 
+# from elexon portal, 'my profile', 'scripting key'
+api_key__ = 'insertHere'
+
 # Options
 saveData = 0
 saveInt = 0
@@ -17,7 +20,7 @@ datatype = 'ftws' # forecast for wind on/offshore + solar
 datatype = 'imbl' # day-ahead imbalance forecast
 
 # load in bm_api_utils, bm_data:
-bau = bmrs_utils.bm_api_utils(datatype) 
+bau = bmrs_utils.bm_api_utils(datatype,api_key__) 
 bmd = bmrs_utils.bm_data()
 
 nSteps = bau.get_nSteps()
