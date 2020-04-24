@@ -1,3 +1,4 @@
 __pycache__/
 *.xml
 *.pkl
+bmrs_data.py

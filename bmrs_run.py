@@ -2,8 +2,7 @@ import os, sys, pickle
 import matplotlib.pyplot as plt
 import bmrs_utils
 
-# from elexon portal, 'my profile', 'scripting key'
-api_key__ = 'insertHere'
+from bmrs_data import api_key__
 
 # Options
 saveData = 0
@@ -22,9 +21,11 @@ datatype = 'imbl' # day-ahead imbalance forecast
 # load in bm_api_utils, bm_data:
 bau = bmrs_utils.bm_api_utils(datatype,api_key__) 
 bmd = bmrs_utils.bm_data()
+if saveData or saveInt:
+    from bmrs_data import saveDir
 
 nSteps = bau.get_nSteps()
-nSteps = 2 # <--------- for debugging, uncomment this
+# nSteps = 2 # <--------- for debugging, uncomment this
 
 for i in range(nSteps):
     print(i+1,'oo',nSteps)
@@ -33,7 +34,7 @@ for i in range(nSteps):
     
     # dump the current response for manual inspection, if wanted
     if saveInt:
-        fn = os.path.join(sys.path[0],'xmlDump.xml')
+        fn = os.path.join(saveDir,'xmlDump.xml')
         with open(fn,'w') as file:
             print('XML saved to:\n\t',fn)
             file.write(r.text)
@@ -53,7 +54,7 @@ if pltData:
     plt.show()
 
 if saveData:
-    fnOut = os.path.join(sys.path[0],'bmr_'+datatype+'.pkl')
+    fnOut = os.path.join(saveDir,'bmr_'+datatype+'.pkl')
     with open(fnOut,'wb') as file:
         print('\nSaving data to:\n\t',fnOut)
         pickle.dump({'data':bmd.dataOut,
