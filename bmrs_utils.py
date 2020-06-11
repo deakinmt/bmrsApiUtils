@@ -53,7 +53,10 @@ def loadSp2utcDict(yrA=None,yrB=None):
         sp2utcDict[(dtUk,sps)] = dt
     return sp2utcDict
 
-
+def sp2timedelta(sp_):
+    hrMnSc = np.array(sp_.split(':')).astype('int')
+    nSeconds = int(sum(np.array([3600,60,1])*hrMnSc))
+    return timedelta(0,nSeconds)
 
 # Initialise session, and settlement period converter
 sp2utcD = loadSp2utcDict()
@@ -74,6 +77,7 @@ class api_d:
            'flhh':'5.1.23',
            'ftws':'5.1.21',
            'imbl':'5.2.38',
+           'rsys':'5.2.12',
            }
     
     def __init__(self,datatype):
@@ -85,6 +89,7 @@ class api_d:
                         'flhh':['SettlementDate'],
                         'ftws':['SettlementDate'],
                         'imbl':['FromDate','ToDate'],
+                        'rsys':['FromDateTime','ToDateTime'],
                         }
         
         rpts = {'lolp':r'LOLPDRM/v1?',
@@ -94,6 +99,7 @@ class api_d:
                 'flhh':r'B1620/v1?',
                 'ftws':r'B1440/v1?',
                 'imbl':r'MELIMBALNGC/v1?',
+                'rsys':r'ROLSYSDEM/v1?',
                 }
         
         # Start dates manually found from elexon website
@@ -104,6 +110,7 @@ class api_d:
                'flhh':datetime(2014,12,29), # 13/4/2020
                'ftws':datetime(2014,12,30), # 13/4/2020
                'imbl':datetime(2014,12,30), # 13/4/2020
+               'rsys':datetime(2015,7,14), # 10/6/2020
                }
         
         dts = {'lolp':50,
@@ -113,6 +120,7 @@ class api_d:
                'flhh':1,
                'ftws':1,
                'imbl':50,
+               'rsys':5,
                }
         
         # ---- Extracting dates from returned data
@@ -123,6 +131,17 @@ class api_d:
                     'flhh':'settlementPeriod',
                     'ftws':'settlementPeriod',
                     'imbl':'settlementPeriod',
+                    'rsys':'publishingPeriodCommencingTime',
+                    }
+        
+        spFormatFunc = {'lolp':int,
+                    'ixtr':int,
+                    'dswd':int,
+                    'sysd':int,
+                    'flhh':int,
+                    'ftws':int,
+                    'imbl':int,
+                    'rsys':sp2timedelta,
                     }
         
         sdFormat = {'lolp':'settlementDate',
@@ -132,6 +151,7 @@ class api_d:
                     'flhh':'settlementDate',
                     'ftws':'settlementDate',
                     'imbl':'settlementDate',
+                    'rsys':'settDate',
                     }
         
         # ---- Gettung the data from the XML that is returned
@@ -142,6 +162,7 @@ class api_d:
                     'flhh':{},
                     'ftws':{},
                     'imbl':[],
+                    'rsys':[],
                     }
         
         recordKey = {'lolp':None,
@@ -151,6 +172,7 @@ class api_d:
                     'flhh':'powerSystemResourceType',
                     'ftws':'powerSystemResourceType',
                     'imbl':None,
+                    'rsys':[],
                     }
         
         headsets = {'lolp':['drm12Forecast','lolp12Forecast',
@@ -165,6 +187,7 @@ class api_d:
                     'flhh':['quantity'],
                     'ftws':['quantity'],
                     'imbl':['margin','imbalanceValue'],
+                    'rsys':['fuelTypeGeneration'],
                     }
         
         dataClass = {'lolp':float,
@@ -174,12 +197,14 @@ class api_d:
                     'flhh':float,
                     'ftws':float,
                     'imbl':float,
+                    'rsys':float,
                     }
         
         
         self.datatype = datatype
         self.f2f = frmToFormat[datatype]
         self.spf = spFormat[datatype]
+        self.spF = spFormatFunc[datatype]
         self.sdf = sdFormat[datatype]
         self.rpt = rpts[datatype]
         self.t0 = t0s[datatype]
@@ -197,8 +222,13 @@ class bm_data:
     sPrds = []
     data = []
     def process_bm_data(self,api_d):
-        self.dtms = [sp2utcD[(self.sDates[i].date(),self.sPrds[i])]
+        # Get the timestamps
+        if api_d.spF==int:
+            self.dtms = [sp2utcD[(self.sDates[i].date(),self.sPrds[i])]
                                         for i in range(len(self.sDates))]
+        elif api_d.spF==sp2timedelta:
+            self.dtms = [date+dt for date,dt in zip(self.sDates,self.sPrds)]
+        
         self.tDict = {'t0':min(self.dtms),
                       't1':max(self.dtms),
                       'dt':abs(self.dtms[1]-self.dtms[0])
@@ -257,10 +287,19 @@ class bm_api_utils():
     
     def get_time_url(self,i):
         dA = self.ad.t0+(i*self.ad.dt)
-        fsd = self.ad.f2f[0] + '={:%Y-%m-%d}'.format(dA)
+        
+        # Usually a date is ok, for 'FromDateTime' extra info is required.
+        if self.ad.f2f[0]=='FromDateTime':
+            formatStr = lambda d_: '={:%Y-%m-%d %H:%M:%S}'.format(d_)
+            d_dB = timedelta(0,5*60)
+        else:
+            formatStr = lambda d_: '={:%Y-%m-%d}'.format(d_)
+            d_dB = timedelta(1)
+        
+        fsd = self.ad.f2f[0] + formatStr(dA)
         if len(self.ad.f2f)==2:
-            dB = (self.ad.t0+((i+1)*self.ad.dt)) - timedelta(1)
-            tsd = self.ad.f2f[1] + '={:%Y-%m-%d}'.format(dB)
+            dB = (self.ad.t0+((i+1)*self.ad.dt)) - d_dB
+            tsd = self.ad.f2f[1] + formatStr(dB)
         else:
             tsd = 'Period=*'
         return fsd, tsd
@@ -280,7 +319,8 @@ class bm_api_utils():
         for item in rl:
             sdate0 = (item.find(api_d.sdf).text).split('-')
             sdate = datetime(*([int(x) for x in sdate0]))
-            sp = int(item.find(api_d.spf).text)
+            
+            sp = api_d.spF( item.find(api_d.spf).text )
             
             # sometimes there are multiple dates/sps:
             if [sdate,sp]!=dspPrev:
