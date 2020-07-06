@@ -9,6 +9,9 @@ saveData = 0
 saveInt = 0
 pltData = 0
 
+saveType = 'pkl' # 'pkl' or 'csv'
+
+
 # Choose data to pull - uncomment as required. See bau.ids
 datatype = 'lolp' # LOLP and derated margins (DRMs)
 datatype = 'ixtr' # interconnector flows
@@ -58,10 +61,16 @@ if pltData:
     plt.show()
 
 if saveData:
-    fnOut = os.path.join(saveDir,'bmr_'+datatype+'.pkl')
-    with open(fnOut,'wb') as file:
-        print('\nSaving data to:\n\t',fnOut)
-        pickle.dump({'data':bmd.dataOut,
-                     'tDict':bmd.tDict,
-                     'headings':bmd.headings
-                     },file)
+    fnOut = os.path.join(saveDir,'bmr_'+datatype+'.' + saveType)
+    print('\nSaving data to:\n\t',fnOut)
+    if saveType=='pkl':
+        with open(fnOut,'wb') as file:
+            pickle.dump({'data':bmd.dataOut,
+                         'tDict':bmd.tDict,
+                         'headings':bmd.headings
+                         },file)
+    elif saveType=='csv':
+        data = [[t.isoformat()]+x.tolist() 
+                                    for t,x in zip(bmd.dtmsFull,bmd.dataOut)]
+        head = ['IsoDatetime']+bmd.headings
+        bmrs_utils.data2csv(fnOut,data,head)

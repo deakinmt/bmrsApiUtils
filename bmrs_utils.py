@@ -1,4 +1,4 @@
-import requests
+import requests, csv
 from datetime import datetime, timedelta
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -384,3 +384,15 @@ class bm_api_utils():
                     bmd.data[-1].append(val_)
         
         return bmd
+
+def data2csv(fn,data,head=None):
+    """Write list of lists 'data' to a csv.
+    
+    If head is passed, put as the first row.
+    """
+    if not head is None:
+        data = [head] + data
+    
+    with open(fn, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(data)

@@ -11,8 +11,12 @@ The main output of bmrs_run.py is an object bmd with the following properties:
 - headings: a list of the names of headings of each column of dataOut.
 
 It also contains:
-- dtmsFull: is the full time series, for plotting (suggested not to save this)
+- dtmsFull: is the full time series
 - dtms: not used (the datetimes from the downloaded data)
+
+Two options are given to save the data:
+- pkl, saving the data as a compressed pkl using only tDict
+- csv, saving the data as a csv with each row a unique time
 
 It is intended that bmrs_data_.py is copied and saved as bmrs_data.py (this 
 is in gitignore), and then your api key and the output directory for saving
