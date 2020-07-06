@@ -18,6 +18,9 @@ datatype = 'flhh' # fuel hh, for wind on/offshore + solar
 datatype = 'ftws' # forecast for wind on/offshore + solar
 datatype = 'imbl' # day-ahead imbalance forecast
 datatype = 'rsys' # rolling system demand
+datatype = 'ttrs' # temperatures
+datatype = 'xchg' # gbp-euro exchange rates
+
 
 # load in bm_api_utils, bm_data:
 bau = bmrs_utils.bm_api_utils(datatype,api_key__) 

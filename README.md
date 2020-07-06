@@ -22,3 +22,13 @@ To run a query not in the list of queries already implemented, then refer
 to the API guide. The XML file may also likely need to be inspected too to
 populate all of the dicts of api_d, for calling and post processing the data
 into a usable format.
+
+
+Useful links
+-----
+- BM Reports website:
+https://www.bmreports.com/bmrs/?q=help/about-us
+
+- Doc for the API:
+https://www.elexon.co.uk/guidance-note/bmrs-api-data-push-user-guide/
+

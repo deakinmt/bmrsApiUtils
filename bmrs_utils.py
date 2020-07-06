@@ -78,6 +78,8 @@ class api_d:
            'ftws':'5.1.21',
            'imbl':'5.2.38',
            'rsys':'5.2.12',
+           'ttrs':'5.2.1',
+           'xchg':'5.2.64',
            }
     
     def __init__(self,datatype):
@@ -90,6 +92,8 @@ class api_d:
                         'ftws':['SettlementDate'],
                         'imbl':['FromDate','ToDate'],
                         'rsys':['FromDateTime','ToDateTime'],
+                        'ttrs':['FromDate','ToDate'],
+                        'xchg':['SettlementDayFrom','SettlementDayTo'],
                         }
         
         rpts = {'lolp':r'LOLPDRM/v1?',
@@ -100,6 +104,8 @@ class api_d:
                 'ftws':r'B1440/v1?',
                 'imbl':r'MELIMBALNGC/v1?',
                 'rsys':r'ROLSYSDEM/v1?',
+                'ttrs':r'TEMP/v1?',
+                'xchg':r'EURGBFXDATA/v1?',
                 }
         
         # Start dates manually found from elexon website
@@ -111,6 +117,8 @@ class api_d:
                'ftws':datetime(2014,12,30), # 13/4/2020
                'imbl':datetime(2014,12,30), # 13/4/2020
                'rsys':datetime(2015,7,14), # 10/6/2020
+               'ttrs':datetime(2012,11,10), # 06/7/2020
+               'xchg':datetime(2019,12,12), # 06/7/2020
                }
         
         dts = {'lolp':50,
@@ -121,6 +129,8 @@ class api_d:
                'ftws':1,
                'imbl':50,
                'rsys':5,
+               'ttrs':30,
+               'xchg':30,
                }
         
         # ---- Extracting dates from returned data
@@ -132,6 +142,8 @@ class api_d:
                     'ftws':'settlementPeriod',
                     'imbl':'settlementPeriod',
                     'rsys':'publishingPeriodCommencingTime',
+                    'ttrs':None,
+                    'xchg':None,
                     }
         
         spFormatFunc = {'lolp':int,
@@ -142,6 +154,8 @@ class api_d:
                     'ftws':int,
                     'imbl':int,
                     'rsys':sp2timedelta,
+                    'ttrs':None,
+                    'xchg':None,
                     }
         
         sdFormat = {'lolp':'settlementDate',
@@ -152,6 +166,8 @@ class api_d:
                     'ftws':'settlementDate',
                     'imbl':'settlementDate',
                     'rsys':'settDate',
+                    'ttrs':'publishingPeriodCommencingTime',
+                    'xchg':'settlementDay',
                     }
         
         # ---- Gettung the data from the XML that is returned
@@ -163,6 +179,8 @@ class api_d:
                     'ftws':{},
                     'imbl':[],
                     'rsys':[],
+                    'ttrs':[],
+                    'xchg':[],
                     }
         
         recordKey = {'lolp':None,
@@ -173,6 +191,8 @@ class api_d:
                     'ftws':'powerSystemResourceType',
                     'imbl':None,
                     'rsys':[],
+                    'ttrs':None,
+                    'xchg':None,
                     }
         
         headsets = {'lolp':['drm12Forecast','lolp12Forecast',
@@ -188,6 +208,11 @@ class api_d:
                     'ftws':['quantity'],
                     'imbl':['margin','imbalanceValue'],
                     'rsys':['fuelTypeGeneration'],
+                    'ttrs':['temperature',
+                            'normalReferenceTemperature',
+                            'lowReferenceTemperature',
+                            'highReferenceTemperature',],
+                    'xchg':['settlementExchangeRate']
                     }
         
         dataClass = {'lolp':float,
@@ -198,6 +223,8 @@ class api_d:
                     'ftws':float,
                     'imbl':float,
                     'rsys':float,
+                    'ttrs':float,
+                    'xchg':float,
                     }
         
         
@@ -223,7 +250,7 @@ class bm_data:
     data = []
     def process_bm_data(self,api_d):
         # Get the timestamps
-        if api_d.spF==int:
+        if api_d.spF==int or api_d.spF is None:
             self.dtms = [sp2utcD[(self.sDates[i].date(),self.sPrds[i])]
                                         for i in range(len(self.sDates))]
         elif api_d.spF==sp2timedelta:
@@ -320,7 +347,11 @@ class bm_api_utils():
             sdate0 = (item.find(api_d.sdf).text).split('-')
             sdate = datetime(*([int(x) for x in sdate0]))
             
-            sp = api_d.spF( item.find(api_d.spf).text )
+            # Get the settlement period
+            if api_d.spf is None:
+                sp = 1
+            else:
+                sp = api_d.spF( item.find(api_d.spf).text )
             
             # sometimes there are multiple dates/sps:
             if [sdate,sp]!=dspPrev:
@@ -330,7 +361,8 @@ class bm_api_utils():
                 dspPrev = [bmd.sDates[-1],bmd.sPrds[-1]]
             
             for head in api_d.hst:
-                if item.find('activeFlag').text=='Y':
+                if item.find('activeFlag') is None or \
+                                        item.find('activeFlag').text=='Y':
                     if api_d.datatype in ['lolp','imbl']:
                         try:
                             val_ = api_d.dcls(item.find(head).text)
