@@ -38,6 +38,9 @@ for i in range(nSteps):
     print(i+1,'oo',nSteps)
     # get the api response
     r = bau.get_response(i)
+    if not r.ok:
+        print(f'Retry, r: {r}')
+        r = bau.get_response(i)
     
     # dump the current response for manual inspection, if wanted
     if saveInt:
