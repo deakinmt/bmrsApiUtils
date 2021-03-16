@@ -1,8 +1,15 @@
 import os, sys, pickle
+import numpy as np
 import matplotlib.pyplot as plt
+from importlib import reload
 import bmrs_utils
 
+reload(bmrs_utils)
 from bmrs_data import api_key__
+
+# plt.style.use('ieee')
+# from funcsPython import repl_list
+# exec(repl_list)
 
 # Options
 saveData = 0
@@ -23,6 +30,7 @@ datatype = 'imbl' # day-ahead imbalance forecast
 datatype = 'rsys' # rolling system demand
 datatype = 'ttrs' # temperatures
 datatype = 'xchg' # gbp-euro exchange rates
+datatype = 'dsps' # Detailed system prices detsysprices
 
 
 # load in bm_api_utils, bm_data:
@@ -73,6 +81,9 @@ if saveData:
                          'headings':bmd.headings
                          },file)
     elif saveType=='csv':
+        if datatype=='dsps':
+            raise Exception('dsps only valid as .pkl for now.')
+        
         data = [[t.isoformat()]+x.tolist() 
                                     for t,x in zip(bmd.dtmsFull,bmd.dataOut)]
         head = ['IsoDatetime']+bmd.headings

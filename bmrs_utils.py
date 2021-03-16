@@ -60,6 +60,8 @@ def sp2timedelta(sp_):
 
 # Initialise session, and settlement period converter
 sp2utcD = loadSp2utcDict()
+utc2spD = {v:k for k,v in sp2utcD.items()}
+
 requests.session()
 
 class api_d:
@@ -80,6 +82,7 @@ class api_d:
            'rsys':'5.2.12',
            'ttrs':'5.2.1',
            'xchg':'5.2.64',
+           'dsps':'5.2.52',
            }
     
     def __init__(self,datatype):
@@ -94,6 +97,7 @@ class api_d:
                         'rsys':['FromDateTime','ToDateTime'],
                         'ttrs':['FromDate','ToDate'],
                         'xchg':['SettlementDayFrom','SettlementDayTo'],
+                        'dsps':['SettlementDate',],
                         }
         
         rpts = {'lolp':r'LOLPDRM/v1?',
@@ -106,6 +110,7 @@ class api_d:
                 'rsys':r'ROLSYSDEM/v1?',
                 'ttrs':r'TEMP/v1?',
                 'xchg':r'EURGBFXDATA/v1?',
+                'dsps':r'DETSYSPRICES/v1?',
                 }
         
         # Start dates manually found from elexon website
@@ -119,18 +124,20 @@ class api_d:
                'rsys':datetime(2015,7,14), # 10/6/2020
                'ttrs':datetime(2012,11,10), # 06/7/2020
                'xchg':datetime(2019,12,12), # 06/7/2020
+               'dsps':datetime(2014,1,10), # 16/3/2020
                }
         
-        dts = {'lolp':50,
-               'ixtr':50,
-               'dswd':40,
-               'sysd':30,
-               'flhh':1,
-               'ftws':1,
-               'imbl':50,
-               'rsys':5,
-               'ttrs':30,
-               'xchg':30,
+        dts = {'lolp':[50],
+               'ixtr':[50],
+               'dswd':[40],
+               'sysd':[30],
+               'flhh':[1],
+               'ftws':[1],
+               'imbl':[50],
+               'rsys':[5],
+               'ttrs':[30],
+               'xchg':[30],
+               'dsps':[0,60*30,],
                }
         
         # ---- Extracting dates from returned data
@@ -144,6 +151,7 @@ class api_d:
                     'rsys':'publishingPeriodCommencingTime',
                     'ttrs':None,
                     'xchg':None,
+                    'dsps':'settlementPeriod',
                     }
         
         spFormatFunc = {'lolp':int,
@@ -156,6 +164,7 @@ class api_d:
                     'rsys':sp2timedelta,
                     'ttrs':None,
                     'xchg':None,
+                    'dsps':int,
                     }
         
         sdFormat = {'lolp':'settlementDate',
@@ -168,6 +177,7 @@ class api_d:
                     'rsys':'settDate',
                     'ttrs':'publishingPeriodCommencingTime',
                     'xchg':'settlementDay',
+                    'dsps':'settlementDate',
                     }
         
         # ---- Gettung the data from the XML that is returned
@@ -181,6 +191,7 @@ class api_d:
                     'rsys':[],
                     'ttrs':[],
                     'xchg':[],
+                    'dsps':[],
                     }
         
         recordKey = {'lolp':None,
@@ -193,6 +204,7 @@ class api_d:
                     'rsys':[],
                     'ttrs':None,
                     'xchg':None,
+                    'dsps':None,
                     }
         
         headsets = {'lolp':['drm12Forecast','lolp12Forecast',
@@ -212,7 +224,13 @@ class api_d:
                             'normalReferenceTemperature',
                             'lowReferenceTemperature',
                             'highReferenceTemperature',],
-                    'xchg':['settlementExchangeRate']
+                    'xchg':['settlementExchangeRate'],
+                    'dsps':['recordType',
+                            'id',
+                            'soFlag',
+                            'offerVolume','bidVolume',
+                            'acceptanceId',
+                            ],
                     }
         
         dataClass = {'lolp':float,
@@ -225,6 +243,7 @@ class api_d:
                     'rsys':float,
                     'ttrs':float,
                     'xchg':float,
+                    'dsps':lambda x: x,
                     }
         
         
@@ -237,7 +256,7 @@ class api_d:
         self.t0 = t0s[datatype]
         self.hst = headsets[datatype]
         self.dcls = dataClass[datatype]
-        self.dt = timedelta(dts[datatype])
+        self.dt = timedelta(*dts[datatype])
         self.ctr = containers[datatype]
         self.rkey = recordKey[datatype]
 
@@ -249,6 +268,9 @@ class bm_data:
     sPrds = []
     data = []
     def process_bm_data(self,api_d):
+        """Process the bm data ready for saving.
+        
+        """
         # Get the timestamps
         if api_d.spF==int or api_d.spF is None:
             self.dtms = [sp2utcD[(self.sDates[i].date(),self.sPrds[i])]
@@ -282,12 +304,27 @@ class bm_data:
             data = self.data
             self.headings = api_d.hst
         
-        # force all data to the correct point in time
-        self.dataOut = np.nan*np.zeros((len(self.dtmsFull),len(data[0])))
-        for d,v in zip(self.dtms,data):
-            idx = int((d-self.tDict['t0'])/self.tDict['dt'])
-            idxSel = np.where(np.isnan(self.dataOut[idx]))[0]
-            self.dataOut[idx][idxSel] = [v[i] for i in idxSel]
+        if api_d.datatype!='dsps':
+            # force all data to the correct point in time
+            self.dataOut = np.nan*np.zeros((len(self.dtmsFull),len(data[0])))
+            for d,v in zip(self.dtms,data):
+                idx = int((d-self.tDict['t0'])/self.tDict['dt'])
+                idxSel = np.where(np.isnan(self.dataOut[idx]))[0]
+                self.dataOut[idx][idxSel] = [v[i] for i in idxSel]
+        else:
+            self.dataOut = {t:self.l2t(r,len(self.headings)) 
+                                for t,r in zip(self.dtmsFull,data,)}
+    
+    @staticmethod
+    def l2t(ll,nh):
+        """Convert a single list of dsps to a formatted table."""
+        r2r = lambda rr: [rr[0][0],rr[1],rr[2]=='T',float(rr[3]),
+                                                float(rr[4]),int(rr[5])]
+        tbl = []
+        for ii in range(2*nh,len(ll),nh):
+            tbl.append(r2r(ll[ii:ii+nh]))
+        
+        return tbl
 
 class bm_api_utils():
     """A class for calling BMRS using requests, then processing the XML data.
@@ -327,6 +364,8 @@ class bm_api_utils():
         if len(self.ad.f2f)==2:
             dB = (self.ad.t0+((i+1)*self.ad.dt)) - d_dB
             tsd = self.ad.f2f[1] + formatStr(dB)
+        elif self.ad.datatype=='dsps':
+            tsd = f'SettlementPeriod={utc2spD[dA][1]}'
         else:
             tsd = 'Period=*'
         return fsd, tsd
@@ -348,10 +387,8 @@ class bm_api_utils():
             sdate = datetime(*([int(x) for x in sdate0]))
             
             # Get the settlement period
-            if api_d.spf is None:
-                sp = 1
-            else:
-                sp = api_d.spF( item.find(api_d.spf).text )
+            sp = 1 if api_d.spf is None else \
+                                    api_d.spF( item.find(api_d.spf).text )
             
             # sometimes there are multiple dates/sps:
             if [sdate,sp]!=dspPrev:
@@ -363,7 +400,7 @@ class bm_api_utils():
             for head in api_d.hst:
                 if item.find('activeFlag') is None or \
                                         item.find('activeFlag').text=='Y':
-                    if api_d.datatype in ['lolp','imbl']:
+                    if api_d.datatype in ['lolp','imbl','dsps']:
                         try:
                             val_ = api_d.dcls(item.find(head).text)
                         except AttributeError:
