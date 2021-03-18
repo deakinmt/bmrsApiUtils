@@ -271,6 +271,22 @@ class bm_data:
         """Process the bm data ready for saving.
         
         """
+        # First, if dsps, then remove NULL elements so int() can be taken
+        if api_d.datatype=='dsps':
+            data_ = []
+            for row in self.data:
+                data_.append([])
+                nh = len(api_d.hst)
+                idsel = api_d.hst.index('acceptanceId')
+                for i,v_ in enumerate(row):
+                    if i%nh==idsel:
+                        v = -1 if v_=='NULL' else v_
+                    else:
+                        v = v_
+                    data_[-1].append(v)
+            
+            self.data = data_
+        
         # Get the timestamps
         if api_d.spF==int or api_d.spF is None:
             self.dtms = [sp2utcD[(self.sDates[i].date(),self.sPrds[i])]
