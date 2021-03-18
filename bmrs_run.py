@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from importlib import reload
 import bmrs_utils
+from datetime import datetime, timedelta
 
 reload(bmrs_utils)
 from bmrs_data import api_key__
@@ -31,6 +32,7 @@ datatype = 'rsys' # rolling system demand
 datatype = 'ttrs' # temperatures
 datatype = 'xchg' # gbp-euro exchange rates
 datatype = 'dsps' # Detailed system prices detsysprices
+datatype = 'gcpu' # Installed generating capacity per unit
 
 
 # load in bm_api_utils, bm_data:
@@ -81,7 +83,7 @@ if saveData:
                          'headings':bmd.headings
                          },file)
     elif saveType=='csv':
-        if datatype=='dsps':
+        if datatype in ['dsps','gcpu',]
             raise Exception('dsps only valid as .pkl for now.')
         
         data = [[t.isoformat()]+x.tolist() 

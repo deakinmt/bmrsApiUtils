@@ -14,6 +14,18 @@ def tDict2stamps(tDict):
     """Parameter tDict has keys t0, t1, dt."""
     return tset2stamps(tDict['t0'],tDict['t1'],tDict['dt'])
 
+# date to string functions
+d2s = lambda d: d.isoformat()[:13].replace('-','').replace('T','')
+s2d = lambda s: datetime(*[int(v) for v in [s[:4],s[4:6],s[6:8],s[8:]]])
+m2s = lambda m: '-'.join([f'{ii:02d}' for ii in [m.year,m.month,m.day]])
+def s2m(ss):
+    # if np.isnan(ss):
+    if ss is str:
+        return datetime(*[int(v) for v in s.split('-')])
+    else:
+        return ss
+
+
 @lru_cache(maxsize=16)
 def loadSp2utcDict(yrA=None,yrB=None):
     """Creates a dict for converting (date,sp) tuples to UTC datetimes.
@@ -59,7 +71,7 @@ def sp2timedelta(sp_):
     return timedelta(0,nSeconds)
 
 # Initialise session, and settlement period converter
-sp2utcD = loadSp2utcDict()
+sp2utcD = loadSp2utcDict(yrA=2000,yrB=2022)
 utc2spD = {v:k for k,v in sp2utcD.items()}
 
 requests.session()
@@ -83,6 +95,7 @@ class api_d:
            'ttrs':'5.2.1',
            'xchg':'5.2.64',
            'dsps':'5.2.52',
+           'gcpu':'5.1.19',
            }
     
     def __init__(self,datatype):
@@ -98,6 +111,7 @@ class api_d:
                         'ttrs':['FromDate','ToDate'],
                         'xchg':['SettlementDayFrom','SettlementDayTo'],
                         'dsps':['SettlementDate',],
+                        'gcpu':['Year',],
                         }
         
         rpts = {'lolp':r'LOLPDRM/v1?',
@@ -111,6 +125,7 @@ class api_d:
                 'ttrs':r'TEMP/v1?',
                 'xchg':r'EURGBFXDATA/v1?',
                 'dsps':r'DETSYSPRICES/v1?',
+                'gcpu':r'B1420/v1?',
                 }
         
         # Start dates manually found from elexon website
@@ -125,6 +140,7 @@ class api_d:
                'ttrs':datetime(2012,11,10), # 06/7/2020
                'xchg':datetime(2019,12,12), # 06/7/2020
                'dsps':datetime(2014,1,10), # 16/3/2020
+               'gcpu':datetime(2000,1,1), # 18/3/2020
                }
         
         dts = {'lolp':[50],
@@ -138,6 +154,7 @@ class api_d:
                'ttrs':[30],
                'xchg':[30],
                'dsps':[0,60*30,],
+               'gcpu':None,
                }
         
         # ---- Extracting dates from returned data
@@ -152,6 +169,7 @@ class api_d:
                     'ttrs':None,
                     'xchg':None,
                     'dsps':'settlementPeriod',
+                    'gcpu':None,
                     }
         
         spFormatFunc = {'lolp':int,
@@ -165,6 +183,7 @@ class api_d:
                     'ttrs':None,
                     'xchg':None,
                     'dsps':int,
+                    'gcpu':None,
                     }
         
         sdFormat = {'lolp':'settlementDate',
@@ -178,6 +197,7 @@ class api_d:
                     'ttrs':'publishingPeriodCommencingTime',
                     'xchg':'settlementDay',
                     'dsps':'settlementDate',
+                    'gcpu':'year',
                     }
         
         # ---- Gettung the data from the XML that is returned
@@ -192,6 +212,7 @@ class api_d:
                     'ttrs':[],
                     'xchg':[],
                     'dsps':[],
+                    'gcpu':[],
                     }
         
         recordKey = {'lolp':None,
@@ -205,6 +226,7 @@ class api_d:
                     'ttrs':None,
                     'xchg':None,
                     'dsps':None,
+                    'gcpu':None,
                     }
         
         headsets = {'lolp':['drm12Forecast','lolp12Forecast',
@@ -231,6 +253,16 @@ class api_d:
                             'offerVolume','bidVolume',
                             'acceptanceId',
                             ],
+                    'gcpu':[
+                            'timeSeriesID',
+                            'powerSystemResourceType',
+                            'registeredResourceEICCode',
+                            'nGCBMUnitID',
+                            'registeredResourceName',
+                            'activeFlag',
+                            'implementationDate',
+                            'decommissioningDate',
+                            ],
                     }
         
         dataClass = {'lolp':float,
@@ -244,6 +276,7 @@ class api_d:
                     'ttrs':float,
                     'xchg':float,
                     'dsps':lambda x: x,
+                    'gcpu':lambda x: x,
                     }
         
         
@@ -256,7 +289,7 @@ class api_d:
         self.t0 = t0s[datatype]
         self.hst = headsets[datatype]
         self.dcls = dataClass[datatype]
-        self.dt = timedelta(*dts[datatype])
+        self.dt = None if dts[datatype] is None else timedelta(*dts[datatype])
         self.ctr = containers[datatype]
         self.rkey = recordKey[datatype]
 
@@ -320,24 +353,38 @@ class bm_data:
             data = self.data
             self.headings = api_d.hst
         
-        if api_d.datatype!='dsps':
+        
+        if api_d.datatype=='dsps':
+            self.dataOut = {t:self.l2t_dsps(r,len(self.headings)) 
+                                for t,r in zip(self.dtmsFull,data,)}
+        elif api_d.datatype=='gcpu':
+            self.dataOut = {t.year:self.l2t_gcpu(r,len(self.headings)) 
+                                for t,r in zip(self.dtmsFull,data,)}
+        else:
             # force all data to the correct point in time
             self.dataOut = np.nan*np.zeros((len(self.dtmsFull),len(data[0])))
             for d,v in zip(self.dtms,data):
                 idx = int((d-self.tDict['t0'])/self.tDict['dt'])
                 idxSel = np.where(np.isnan(self.dataOut[idx]))[0]
                 self.dataOut[idx][idxSel] = [v[i] for i in idxSel]
-        else:
-            self.dataOut = {t:self.l2t(r,len(self.headings)) 
-                                for t,r in zip(self.dtmsFull,data,)}
     
     @staticmethod
-    def l2t(ll,nh):
+    def l2t_dsps(ll,nh):
         """Convert a single list of dsps to a formatted table."""
         r2r = lambda rr: [rr[0][0],rr[1],rr[2]=='T',float(rr[3]),
                                                 float(rr[4]),int(rr[5])]
         tbl = []
         for ii in range(2*nh,len(ll),nh):
+            tbl.append(r2r(ll[ii:ii+nh]))
+        
+        return tbl
+    
+    @staticmethod
+    def l2t_gcpu(ll,nh,):
+        """Convert the gcpu list into a table to output."""
+        r2r = lambda rr: rr[:6] + [s2m(rr[6]),s2m(rr[7]),]
+        tbl = []
+        for ii in range(0,len(ll),nh):
             tbl.append(r2r(ll[ii:ii+nh]))
         
         return tbl
@@ -357,7 +404,10 @@ class bm_api_utils():
         self.datatype = datatype
     
     def get_nSteps(self):
-        return int(np.ceil((datetime.today()-self.ad.t0)/self.ad.dt))
+        if not self.ad.dt is None:
+            return int(np.ceil((datetime.today()-self.ad.t0)/self.ad.dt))
+        else:
+            return datetime.today().year - self.ad.t0.year
     
     def get_url(self,i):
         fsd, tsd = self.get_time_url(i)
@@ -366,25 +416,31 @@ class bm_api_utils():
         return url
     
     def get_time_url(self,i):
-        dA = self.ad.t0+(i*self.ad.dt)
-        
-        # Usually a date is ok, for 'FromDateTime' extra info is required.
-        if self.ad.f2f[0]=='FromDateTime':
-            formatStr = lambda d_: '={:%Y-%m-%d %H:%M:%S}'.format(d_)
-            d_dB = timedelta(0,5*60)
+        if self.ad.dt is None:
+            # dt is None when using years instead of dates
+            fsd=f'{self.ad.f2f[0]}={self.ad.t0.year+i}'
+            return fsd,''
         else:
-            formatStr = lambda d_: '={:%Y-%m-%d}'.format(d_)
-            d_dB = timedelta(1)
-        
-        fsd = self.ad.f2f[0] + formatStr(dA)
-        if len(self.ad.f2f)==2:
-            dB = (self.ad.t0+((i+1)*self.ad.dt)) - d_dB
-            tsd = self.ad.f2f[1] + formatStr(dB)
-        elif self.ad.datatype=='dsps':
-            tsd = f'SettlementPeriod={utc2spD[dA][1]}'
-        else:
-            tsd = 'Period=*'
-        return fsd, tsd
+            dA = self.ad.t0+(i*self.ad.dt)
+            
+            # Usually a date is ok, for 'FromDateTime' extra info is required.
+            if self.ad.f2f[0]=='FromDateTime':
+                formatStr = lambda d_: '={:%Y-%m-%d %H:%M:%S}'.format(d_)
+                d_dB = timedelta(0,5*60)
+            else:
+                formatStr = lambda d_: '={:%Y-%m-%d}'.format(d_)
+                d_dB = timedelta(1)
+            
+            fsd = self.ad.f2f[0] + formatStr(dA)
+            if len(self.ad.f2f)==2:
+                dB = (self.ad.t0+((i+1)*self.ad.dt)) - d_dB
+                tsd = self.ad.f2f[1] + formatStr(dB)
+            elif self.ad.datatype=='dsps':
+                # dsps sets the settlement period INSTEAD of a 'to' date
+                tsd = f'SettlementPeriod={utc2spD[dA][1]}'
+            else:
+                tsd = 'Period=*'
+            return fsd, tsd
     
     def get_response(self,i):
         url = self.get_url(i)
@@ -397,10 +453,15 @@ class bm_api_utils():
         root = ET.XML(r.text)
         rl = root.find('responseBody').find('responseList').findall('item')
         
+        if api_d.datatype=='gcpu':
+            yr = int(root.find('responseMetadata').find(
+                                            'queryString').text[-4:])
+        
         dspPrev = [0,0]
         for item in rl:
             sdate0 = (item.find(api_d.sdf).text).split('-')
-            sdate = datetime(*([int(x) for x in sdate0]))
+            sdate = datetime(*([int(x) for x in sdate0])) if len(sdate0)==3\
+                                        else datetime(yr,1,1,)
             
             # Get the settlement period
             sp = 1 if api_d.spf is None else \
@@ -416,7 +477,7 @@ class bm_api_utils():
             for head in api_d.hst:
                 if item.find('activeFlag') is None or \
                                         item.find('activeFlag').text=='Y':
-                    if api_d.datatype in ['lolp','imbl','dsps']:
+                    if api_d.datatype in ['lolp','imbl','dsps','gcpu',]:
                         try:
                             val_ = api_d.dcls(item.find(head).text)
                         except AttributeError:

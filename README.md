@@ -33,6 +33,8 @@ Useful links
 - BM Reports website:
 https://www.bmreports.com/bmrs/?q=help/about-us
 
+- BM Reports Site Help (surprisingly annoying to find):
+https://www.bmreports.com/bmrs/?q=help/site-help
+
 - Doc for the API:
 https://www.elexon.co.uk/guidance-note/bmrs-api-data-push-user-guide/
-
