@@ -25,7 +25,8 @@ datatype = 'lolp' # LOLP and derated margins (DRMs)
 datatype = 'ixtr' # interconnector flows
 datatype = 'dswd' # derived system wide data
 datatype = 'sysd' # system demand
-datatype = 'flhh' # fuel hh, for wind on/offshore + solar
+datatype = 'flhh' # fuel hh, for wind on/offshore + solar, based on PSRtype
+datatype = 'flxn' # fuel hh, based on Elexon's list (a la ESPENI)
 datatype = 'ftws' # forecast for wind on/offshore + solar
 datatype = 'imbl' # day-ahead imbalance forecast
 datatype = 'rsys' # rolling system demand
@@ -83,7 +84,7 @@ if saveData:
                          'headings':bmd.headings
                          },file)
     elif saveType=='csv':
-        if datatype in ['dsps','gcpu',]
+        if datatype in ['dsps','gcpu',]:
             raise Exception('dsps only valid as .pkl for now.')
         
         data = [[t.isoformat()]+x.tolist() 

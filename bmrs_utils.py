@@ -89,6 +89,7 @@ class api_d:
            'dswd':'5.2.51',
            'sysd':'5.2.46',
            'flhh':'5.1.23',
+           'flxn':'5.2.17',
            'ftws':'5.1.21',
            'imbl':'5.2.38',
            'rsys':'5.2.12',
@@ -105,6 +106,7 @@ class api_d:
                         'dswd':['FromSettlementDate','ToSettlementDate'],
                         'sysd':['FromDate','ToDate'],
                         'flhh':['SettlementDate'],
+                        'flxn':['FromDate','ToDate'],
                         'ftws':['SettlementDate'],
                         'imbl':['FromDate','ToDate'],
                         'rsys':['FromDateTime','ToDateTime'],
@@ -119,6 +121,7 @@ class api_d:
                 'dswd':r'DERSYSDATA/v1?',
                 'sysd':r'SYSDEM/v1?',
                 'flhh':r'B1620/v1?',
+                'flxn':r'FUELHH/v1?',
                 'ftws':r'B1440/v1?',
                 'imbl':r'MELIMBALNGC/v1?',
                 'rsys':r'ROLSYSDEM/v1?',
@@ -134,13 +137,14 @@ class api_d:
                'dswd':datetime(2014,1,10), # 12/4/2020
                'sysd':datetime(2012,11,8), # 13/4/2020
                'flhh':datetime(2014,12,29), # 13/4/2020
+               'flxn':datetime(2015,2,22), # 19/3/2021
                'ftws':datetime(2014,12,30), # 13/4/2020
                'imbl':datetime(2014,12,30), # 13/4/2020
                'rsys':datetime(2015,7,14), # 10/6/2020
                'ttrs':datetime(2012,11,10), # 06/7/2020
                'xchg':datetime(2019,12,12), # 06/7/2020
-               'dsps':datetime(2014,1,10), # 16/3/2020
-               'gcpu':datetime(2000,1,1), # 18/3/2020
+               'dsps':datetime(2014,1,10), # 16/3/2021
+               'gcpu':datetime(2000,1,1), # 18/3/2021
                }
         
         dts = {'lolp':[50],
@@ -148,6 +152,7 @@ class api_d:
                'dswd':[40],
                'sysd':[30],
                'flhh':[1],
+               'flxn':[50],
                'ftws':[1],
                'imbl':[50],
                'rsys':[5],
@@ -163,6 +168,7 @@ class api_d:
                     'dswd':'settlementPeriod',
                     'sysd':'settlementPeriod',
                     'flhh':'settlementPeriod',
+                    'flxn':'settlementPeriod',
                     'ftws':'settlementPeriod',
                     'imbl':'settlementPeriod',
                     'rsys':'publishingPeriodCommencingTime',
@@ -177,6 +183,7 @@ class api_d:
                     'dswd':int,
                     'sysd':int,
                     'flhh':int,
+                    'flxn':int,
                     'ftws':int,
                     'imbl':int,
                     'rsys':sp2timedelta,
@@ -191,6 +198,7 @@ class api_d:
                     'dswd':'settlementDate',
                     'sysd':'startTimeOfHalfHrPeriod',
                     'flhh':'settlementDate',
+                    'flxn':'startTimeOfHalfHrPeriod',
                     'ftws':'settlementDate',
                     'imbl':'settlementDate',
                     'rsys':'settDate',
@@ -206,6 +214,7 @@ class api_d:
                     'dswd':[],
                     'sysd':{},
                     'flhh':{},
+                    'flxn':[],
                     'ftws':{},
                     'imbl':[],
                     'rsys':[],
@@ -220,6 +229,7 @@ class api_d:
                     'dswd':None,
                     'sysd':'recordType',
                     'flhh':'powerSystemResourceType',
+                    'flxn':None,
                     'ftws':'powerSystemResourceType',
                     'imbl':None,
                     'rsys':[],
@@ -239,6 +249,10 @@ class api_d:
                     'dswd':['systemSellPrice','systemBuyPrice'],
                     'sysd':['demand'],
                     'flhh':['quantity'],
+                    'flxn':['ccgt','oil','coal','nuclear','wind','ps',
+                            'npshyd','ocgt','other','intfr','intirl',
+                            'intned','intew','biomass','intnem','intelec',
+                            'intifa2','intnsl',],
                     'ftws':['quantity'],
                     'imbl':['margin','imbalanceValue'],
                     'rsys':['fuelTypeGeneration'],
@@ -270,6 +284,7 @@ class api_d:
                     'dswd':float,
                     'sysd':float,
                     'flhh':float,
+                    'flxn':float,
                     'ftws':float,
                     'imbl':float,
                     'rsys':float,
