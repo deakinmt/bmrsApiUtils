@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from importlib import reload
 import bmrs_utils
 from datetime import datetime, timedelta
+from pprint import pprint
 
 reload(bmrs_utils)
 from bmrs_data import api_key__
@@ -19,24 +20,11 @@ pltData = 0
 
 saveType = 'pkl' # 'pkl' or 'csv'
 
+# Choose data to downloads
+# See: pprint(bmrs_utils.opts_list) and pprint(bau.ids) for options/codes
+datatype = 'ftws_i' # Change me --------
 
-# Choose data to pull - uncomment as required. See bau.ids
-datatype = 'lolp' # LOLP and derated margins (DRMs)
-datatype = 'ixtr' # interconnector flows
-datatype = 'dswd' # derived system wide data
-datatype = 'sysd' # system demand
-datatype = 'flhh' # fuel hh, for wind on/offshore + solar, based on PSRtype
-datatype = 'flxn' # fuel hh, based on Elexon's list (a la ESPENI)
-datatype = 'ftws' # forecast for wind on/offshore + solar
-datatype = 'imbl' # day-ahead imbalance forecast
-datatype = 'rsys' # rolling system demand
-datatype = 'ttrs' # temperatures
-datatype = 'xchg' # gbp-euro exchange rates
-datatype = 'dsps' # Detailed system prices detsysprices
-datatype = 'gcpu' # Installed generating capacity per unit
-
-
-# load in bm_api_utils, bm_data:
+# load in bm_api_utils, bm_data
 bau = bmrs_utils.bm_api_utils(datatype,api_key__) 
 bmd = bmrs_utils.bm_data()
 if saveData or saveInt:

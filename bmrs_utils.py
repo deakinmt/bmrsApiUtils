@@ -5,6 +5,25 @@ import xml.etree.ElementTree as ET
 from functools import lru_cache
 from dateutil import tz
 
+# Choose data to pull - uncomment as required. See bau.ids
+opts_list = {
+        'lolp':'LOLP and derated margins (DRMs)',
+        'ixtr':'interconnector flows',
+        'dswd':'derived system wide data',
+        'sysd':'system demand',
+        'flhh':'fuel hh, for wind on/offshore + solar, based on PSRtype',
+        'flxn':"fuel hh, based on Elexon's list (a la ESPENI)",
+        'ftws':'forecast for wind on/offshore + solar [day ahead]',
+        'ftws_c':'forecast for wind on/offshore + solar [current]',
+        'ftws_i':'forecast for wind on/offshore + solar [intraday]',
+        'imbl':'day-ahead imbalance forecast',
+        'rsys':'rolling system demand',
+        'ttrs':'temperatures',
+        'xchg':'gbp-euro exchange rates',
+        'dsps':'Detailed system prices detsysprices',
+        'gcpu':'Installed generating capacity per unit',
+        }
+
 # A few miscellaneous funcs...
 def tset2stamps(t0,t1,dt):
     """Numpy timeseries starting at t0, ending t1, timestep dt."""
@@ -84,13 +103,16 @@ class api_d:
     
     """
     # with respect to the user guide (DOC for API) from 18 December 2019
-    ids = {'lolp':'5.2.60',
+    ids = {
+           'lolp':'5.2.60',
            'ixtr':'5.2.18',
            'dswd':'5.2.51',
            'sysd':'5.2.46',
            'flhh':'5.1.23',
            'flxn':'5.2.17',
            'ftws':'5.1.21',
+           'ftws_c':'5.1.21', # 'current' version of ftws 
+           'ftws_i':'5.1.21', # 'intraday' version of ftws 
            'imbl':'5.2.38',
            'rsys':'5.2.12',
            'ttrs':'5.2.1',
@@ -101,13 +123,16 @@ class api_d:
     
     def __init__(self,datatype):
         # ---- Forming the URL:
-        frmToFormat = {'lolp':['FromSettlementDate','ToSettlementDate'],
+        frmToFormat = {
+                        'lolp':['FromSettlementDate','ToSettlementDate'],
                         'ixtr':['FromDate','ToDate'],
                         'dswd':['FromSettlementDate','ToSettlementDate'],
                         'sysd':['FromDate','ToDate'],
                         'flhh':['SettlementDate'],
                         'flxn':['FromDate','ToDate'],
                         'ftws':['SettlementDate'],
+                        'ftws_c':['SettlementDate'],
+                        'ftws_i':['SettlementDate'],
                         'imbl':['FromDate','ToDate'],
                         'rsys':['FromDateTime','ToDateTime'],
                         'ttrs':['FromDate','ToDate'],
@@ -116,13 +141,16 @@ class api_d:
                         'gcpu':['Year',],
                         }
         
-        rpts = {'lolp':r'LOLPDRM/v1?',
+        rpts = {
+                'lolp':r'LOLPDRM/v1?',
                 'ixtr':r'INTERFUELHH/v1?',
                 'dswd':r'DERSYSDATA/v1?',
                 'sysd':r'SYSDEM/v1?',
                 'flhh':r'B1620/v1?',
                 'flxn':r'FUELHH/v1?',
                 'ftws':r'B1440/v1?',
+                'ftws_c':r'B1440/v1?',
+                'ftws_i':r'B1440/v1?',
                 'imbl':r'MELIMBALNGC/v1?',
                 'rsys':r'ROLSYSDEM/v1?',
                 'ttrs':r'TEMP/v1?',
@@ -132,18 +160,22 @@ class api_d:
                 }
         
         # Start dates manually found from elexon website
-        t0s = {'lolp':datetime(2015,11,5), # 23/3/2020
+        t0s = {
+               'lolp':datetime(2015,11,5), # 23/3/2020
                'ixtr':datetime(2015,2,22), # 23/3/2020
                'dswd':datetime(2014,1,10), # 12/4/2020
                'sysd':datetime(2012,11,8), # 13/4/2020
                'flhh':datetime(2014,12,29), # 13/4/2020
                'flxn':datetime(2015,2,22), # 19/3/2021
                'ftws':datetime(2014,12,30), # 13/4/2020
+               'ftws_c':datetime(2018,12,12), # 23/3/2021
+               'ftws_i':datetime(2018,12,12), # 23/3/2021
                'imbl':datetime(2014,12,30), # 13/4/2020
                'rsys':datetime(2015,7,14), # 10/6/2020
                'ttrs':datetime(2012,11,10), # 06/7/2020
                'xchg':datetime(2019,12,12), # 06/7/2020
                'dsps':datetime(2014,1,10), # 16/3/2021
+               # 'dsps':datetime(2019,12,7), # 16/3/2021
                'gcpu':datetime(2000,1,1), # 18/3/2021
                }
         
@@ -154,6 +186,8 @@ class api_d:
                'flhh':[1],
                'flxn':[50],
                'ftws':[1],
+               'ftws_c':[1],
+               'ftws_i':[1],
                'imbl':[50],
                'rsys':[5],
                'ttrs':[30],
@@ -163,13 +197,16 @@ class api_d:
                }
         
         # ---- Extracting dates from returned data
-        spFormat = {'lolp':'settlementPeriod',
+        spFormat = {
+                    'lolp':'settlementPeriod',
                     'ixtr':'startTimeOfHalfHrPeriod',
                     'dswd':'settlementPeriod',
                     'sysd':'settlementPeriod',
                     'flhh':'settlementPeriod',
                     'flxn':'settlementPeriod',
                     'ftws':'settlementPeriod',
+                    'ftws_c':'settlementPeriod',
+                    'ftws_i':'settlementPeriod',
                     'imbl':'settlementPeriod',
                     'rsys':'publishingPeriodCommencingTime',
                     'ttrs':None,
@@ -178,13 +215,16 @@ class api_d:
                     'gcpu':None,
                     }
         
-        spFormatFunc = {'lolp':int,
+        spFormatFunc = {
+                    'lolp':int,
                     'ixtr':int,
                     'dswd':int,
                     'sysd':int,
                     'flhh':int,
                     'flxn':int,
                     'ftws':int,
+                    'ftws_c':int,
+                    'ftws_i':int,
                     'imbl':int,
                     'rsys':sp2timedelta,
                     'ttrs':None,
@@ -193,13 +233,16 @@ class api_d:
                     'gcpu':None,
                     }
         
-        sdFormat = {'lolp':'settlementDate',
+        sdFormat = {
+                    'lolp':'settlementDate',
                     'ixtr':'settlementDate',
                     'dswd':'settlementDate',
                     'sysd':'startTimeOfHalfHrPeriod',
                     'flhh':'settlementDate',
                     'flxn':'startTimeOfHalfHrPeriod',
                     'ftws':'settlementDate',
+                    'ftws_c':'settlementDate',
+                    'ftws_i':'settlementDate',
                     'imbl':'settlementDate',
                     'rsys':'settDate',
                     'ttrs':'publishingPeriodCommencingTime',
@@ -209,13 +252,16 @@ class api_d:
                     }
         
         # ---- Gettung the data from the XML that is returned
-        containers = {'lolp':[],
+        containers = {
+                    'lolp':[],
                     'ixtr':[],
                     'dswd':[],
                     'sysd':{},
                     'flhh':{},
                     'flxn':[],
                     'ftws':{},
+                    'ftws_c':{},
+                    'ftws_i':{},
                     'imbl':[],
                     'rsys':[],
                     'ttrs':[],
@@ -224,13 +270,16 @@ class api_d:
                     'gcpu':[],
                     }
         
-        recordKey = {'lolp':None,
+        recordKey = {
+                    'lolp':None,
                     'ixtr':None,
                     'dswd':None,
                     'sysd':'recordType',
                     'flhh':'powerSystemResourceType',
                     'flxn':None,
                     'ftws':'powerSystemResourceType',
+                    'ftws_c':'powerSystemResourceType',
+                    'ftws_i':'powerSystemResourceType',
                     'imbl':None,
                     'rsys':[],
                     'ttrs':None,
@@ -239,7 +288,8 @@ class api_d:
                     'gcpu':None,
                     }
         
-        headsets = {'lolp':['drm12Forecast','lolp12Forecast',
+        headsets = {
+                    'lolp':['drm12Forecast','lolp12Forecast',
                             'drm8HourForecast','lolp8HourForecast',
                             'drm4HourForecast','lolp4HourForecast',
                             'drm2HourForecast','lolp2HourForecast',
@@ -254,6 +304,8 @@ class api_d:
                             'intned','intew','biomass','intnem','intelec',
                             'intifa2','intnsl',],
                     'ftws':['quantity'],
+                    'ftws_c':['quantity'],
+                    'ftws_i':['quantity'],
                     'imbl':['margin','imbalanceValue'],
                     'rsys':['fuelTypeGeneration'],
                     'ttrs':['temperature',
@@ -261,9 +313,9 @@ class api_d:
                             'lowReferenceTemperature',
                             'highReferenceTemperature',],
                     'xchg':['settlementExchangeRate'],
-                    'dsps':['recordType',
-                            'id',
-                            'soFlag',
+                    'dsps':['recordType','id',
+                            'soFlag','storFlag','cadlFlag',
+                            'offerPrice','bidPrice',
                             'offerVolume','bidVolume',
                             'acceptanceId',
                             ],
@@ -271,6 +323,7 @@ class api_d:
                             'timeSeriesID',
                             'powerSystemResourceType',
                             'registeredResourceEICCode',
+                            'bMUnitID',
                             'nGCBMUnitID',
                             'registeredResourceName',
                             'activeFlag',
@@ -279,13 +332,16 @@ class api_d:
                             ],
                     }
         
-        dataClass = {'lolp':float,
+        dataClass = {
+                    'lolp':float,
                     'ixtr':int,
                     'dswd':float,
                     'sysd':float,
                     'flhh':float,
                     'flxn':float,
                     'ftws':float,
+                    'ftws_c':float,
+                    'ftws_i':float,
                     'imbl':float,
                     'rsys':float,
                     'ttrs':float,
@@ -386,8 +442,8 @@ class bm_data:
     @staticmethod
     def l2t_dsps(ll,nh):
         """Convert a single list of dsps to a formatted table."""
-        r2r = lambda rr: [rr[0][0],rr[1],rr[2]=='T',float(rr[3]),
-                                                float(rr[4]),int(rr[5])]
+        r2r = lambda rr: [rr[0][0],rr[1],rr[2]=='T',rr[3]=='T',rr[4]=='T',
+            float(rr[5]),float(rr[6]),float(rr[7]),float(rr[8]),int(rr[9])]
         tbl = []
         for ii in range(2*nh,len(ll),nh):
             tbl.append(r2r(ll[ii:ii+nh]))
@@ -411,12 +467,18 @@ class bm_api_utils():
     def __init__(self,datatype,api_key):
         host = 'https://api.bmreports.com'
         port = ':443'
-        self.key = api_key
-        apikey = 'APIKey='+self.key
+        apikey = 'APIKey='+api_key
         
         self.ad = api_d(datatype)
-        self.url0 = host + port + r'/BMRS/' + self.ad.rpt + apikey
         self.datatype = datatype
+        
+        self.url0 = host + port + r'/BMRS/' + self.ad.rpt + apikey
+        
+        # So far, it seems only the ftws options need an appended query.
+        if self.datatype=='ftws_c':
+            self.url0 = self.url0 + '&processType=Current'
+        elif self.datatype=='ftws_i':
+            self.url0 = self.url0 + '&processType=Intraday'
     
     def get_nSteps(self):
         if not self.ad.dt is None:
