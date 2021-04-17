@@ -295,7 +295,8 @@ class api_d:
                             'drm2HourForecast','lolp2HourForecast',
                             'drm1HourForecast','lolp1HourForecast'],
                     'ixtr':['int'+ctry+'Generation' \
-                            for ctry in ['fr','irl','ned','ew','nem']],
+                                for ctry in ['fr','irl','ned','ew','nem',
+                                                        'elec','ifa2','nsl']],
                     'dswd':['systemSellPrice','systemBuyPrice'],
                     'sysd':['demand'],
                     'flhh':['quantity'],
@@ -371,6 +372,7 @@ class bm_data:
     sDates = []
     sPrds = []
     data = []
+    
     def process_bm_data(self,api_d):
         """Process the bm data ready for saving.
         
@@ -500,6 +502,11 @@ class bm_api_utils():
         else:
             dA = self.ad.t0+(i*self.ad.dt)
             
+            if self.ad.datatype=='dsps':
+                # dsps sets the settlement period INSTEAD of a 'to' date
+                dA, sp  = utc2spD[dA]
+                tsd = f'SettlementPeriod={sp}'
+            
             # Usually a date is ok, for 'FromDateTime' extra info is required.
             if self.ad.f2f[0]=='FromDateTime':
                 formatStr = lambda d_: '={:%Y-%m-%d %H:%M:%S}'.format(d_)
@@ -509,14 +516,15 @@ class bm_api_utils():
                 d_dB = timedelta(1)
             
             fsd = self.ad.f2f[0] + formatStr(dA)
+            
             if len(self.ad.f2f)==2:
                 dB = (self.ad.t0+((i+1)*self.ad.dt)) - d_dB
                 tsd = self.ad.f2f[1] + formatStr(dB)
             elif self.ad.datatype=='dsps':
-                # dsps sets the settlement period INSTEAD of a 'to' date
-                tsd = f'SettlementPeriod={utc2spD[dA][1]}'
+                pass
             else:
                 tsd = 'Period=*'
+            
             return fsd, tsd
     
     def get_response(self,i):
